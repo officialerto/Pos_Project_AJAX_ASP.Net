@@ -1,0 +1,277 @@
+﻿@{
+    ViewBag.Title = "Index";
+}
+
+<div class="row">
+    <div class="col-sm-8">
+        @using (Html.BeginForm("Index", "Home", FormMethod.Post, new { id = "popupForm" }))
+        {
+
+            <table class="table table-bordered">
+                <caption> Add Products  </caption>
+                <tr>
+                    <th>Product Code</th>
+                    <th>Product Name</th>
+                    <th>Price</th>
+                    <th>Qty</th>
+                    <th>Amount</th>
+                    <th>Option</th>
+                </tr>
+                <tr align="center">
+                    <td>
+                        <input type="text" class="form-control" placeholder="barcode" id="barcode" name="barcode" size="25px" required>
+                    </td>
+                    <td>
+                        <input type="text" class="form-control" placeholder="barcode" id="pname" name="pname" size="50px" disabled>
+                        @*<label id="pro_name" name="pname" id="pname"></label>*@
+                    </td>
+                    <td>
+                        <input type="text" class="form-control pro_price" id="pro_price" size="25px" name="pro_price"
+                               placeholder="price" disabled>
+                    </td>
+                    <td>
+                        <input type="number" class="form-control pro_price" id="qty" name="qty"
+                               placeholder="qty" min="1" value="1" size="10px" required>
+                    </td>
+
+                    <td>
+                        <input type="text" class="form-control" placeholder="total_cost" size="35px" id="total_cost" name="total_cost" disabled>
+                    </td>
+                    <td>
+                        <button class="btn btn-success" type="button" onclick="addproduct()">
+                            Add
+                        </button>
+                    </td>
+                </tr>
+            </table>
+        }
+        <table class="table table-bordered" id="product_list">
+            <caption> Products</caption>
+            <thead>
+                <tr>
+                    <th style="width: 40px">Remove</th>
+                    <th>Product Code</th>
+                    <th>Product Name</th>
+                    <th>Unit price</th>
+                    <th>Qty</th>
+                    <th>Discount</th>
+                    <th>Amount</th>
+                </tr>
+            </thead>
+
+            <tbody></tbody>
+        </table>
+    </div>
+    <div class="col-sm-4">
+        <div class="col s12 m6 offset-m4">
+            <div class="form-group" align="left">
+                <label class="form-label">Total</label>
+                <input type="text" class="form-control" placeholder="Total" id="total" name="total" size="30px" required disabled>
+            </div>
+            <div class="card" align="right">
+
+                <button type="button" id="save" class="btn btn-info" onclick="addProject()">
+                    Print Invoice
+                </button>
+                <button type="button" id="clear" class="btn btn-warning" onclick="reSet()">Reset</button>
+            </div>
+        </div>
+
+    </div>
+</div>
+<hr />
+@Html.Partial("Footer");
+
+@Scripts.Render("~/bundles/jquery")
+
+@section scripts{
+
+    <script src="~/Scripts/jquery-3.4.1.js"></script>
+    <script src="~/Scripts/jquery-3.4.1.min.js"></script>
+
+
+    <script src="~/Scripts/jquery.validate.js"></script>
+
+
+
+
+    <script src="//cdn.datatables.net/1.10.19/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-confirm/3.3.2/jquery-confirm.min.js"></script>
+
+
+    <script>
+        getProductcode();
+
+        function getProductcode() {
+
+            $("#barcode").empty();
+            $("#barcode").keyup(function (e) {
+                var q = $("#barcode").val();
+                if ($('#barcode').val().length === 0) {
+                    $.alert({
+                        title: 'Error!',
+                        content: "Please Enter the Barcode",
+                        type: 'red',
+                        autoClose: 'ok|2000'
+                    });
+                    return false;
+                }
+                $.ajax({
+                    type: "POST",
+                    url: '/home/Getid?id=' + $("#barcode").val(),
+                    dataType: "JSON",
+                    success: function (data) {
+                        console.log(data);
+
+                        $('#pname').val(data.barcode);
+                        $('#pro_price').val(data.price);
+                        $("#qty").focus();
+                        var sum = (
+                            Number(data.price) * 1
+                        );
+                        $('#total_cost').val(sum);
+
+                    },
+                    error: function (xhr, status, error) {
+                      //  alert("The barcode entered is not correct");
+                    }
+                });
+                return true;
+            });
+        }
+
+        $(function () {
+            $("#pro_price, #qty").on("keydown keyup click", qty);
+
+            function qty() {
+                var sum = (
+                    Number($("#pro_price").val()) * Number($("#qty").val())
+                );
+                $('#total_cost').val(sum);
+                console.log(sum);
+            }
+        });
+
+        function addproduct() {
+            var sum1 = (
+                Number($("#pro_price").val()) * Number($("#qty").val())
+            );
+
+            var product = {
+                barcode: $("#barcode").val(),
+                pname: $("#pname").val(),
+                pro_price: $("#pro_price").val(),
+                qty: $("#qty").val(),
+                discount: 0,
+                total_cost: $("#total_cost").val(),
+                button: '<button  type="button" class="btn btn-warning btn-xs")">delete</button>'
+            };
+            addRow(product);
+            //$('#frmInvoice')[0].reset();
+        }
+
+        var total = 0;
+        var discount = 0;
+        var grosstotal = 0;
+        var qtye = 0;
+        var barcode = 0;
+
+        function addRow(product) {
+            var qty = Number($("#qty").val());
+            if ($('#barcode').val().length === 0) {
+                $.alert({
+                    title: 'Error!',
+                    content: "Please Enter the Barcode",
+                    type: 'red',
+                    autoClose: 'ok|2000'
+                });
+                return false;
+            } else {
+                var $tableB = $('#product_list tbody');
+                var $row = $(
+                    "<tr><td><Button type='button' class='btn btn-warning btn-xs' name='record' id='deleterow' >Delete</td>" +
+                    "<td>" +
+                    product.barcode +
+                    "</td><td class=\"price\">" +
+                    product.pname +
+                    "</td><td>" +
+                    product.pro_price +
+                    "</td>  <td>" +
+                    product.qty +
+                    "</td>  <td>" +
+                    product.discount +
+                    "</td> <td>" +
+                    product.total_cost +
+                    "</td></tr>");
+                $row.data("barcode", product.product_code);
+                $row.data("pname", product.product_name);
+                $row.data("pro_price", product.price);
+                $row.data("qty", product.qty);
+                $row.data("discount", product.discount);
+                $row.data("total_cost", product.total_cost);
+                total += Number(product.total_cost);
+                $('#total').val(total);
+                discount += Number(product.discount);
+                $('#discounttotal').val(discount);
+                console.log(product.total_cost);
+                grandtotal = total - discount;
+                $('#grandtotal').val(grandtotal);
+                qtye += Number(product.qty);
+                $row.find('#deleterow').click(function (event) {
+                    deleteRow($row);
+                });
+                $tableB.append($row);
+                $("#barcode").focus();
+                return true;
+            }
+        }
+
+        function addProject() {
+            var table_data = new Array();
+            $('#product_list tbody tr').each(function (row, tr) {
+                var barcode = parseInt($(tr).find('td:eq(1)').text());
+                var pname = $(tr).find('td:eq(2)').text();
+                var sum = {
+                    //these records i am going to add into sales table
+                    'barcode': barcode,
+                    'pname': pname,
+                    'pro_price': $(tr).find('td:eq(3)').text(),
+                    'qty': $(tr).find('td:eq(4)').text(),
+                    'total_cost': $(tr).find('td:eq(6)').text()
+                };
+                table_data.push(sum);
+            });
+            //these records i am going to add into sales
+            var total = $("#total").val();
+            console.log(table_data);
+            $.post("/home/SaveNew",
+                {
+                    data: JSON.stringify({
+                        total: $("#total").val(),
+                        data: table_data
+                    })
+                },
+                function (data, status) {
+                    console.log(data);
+                    alert("Status: " + status + "\nMessage: " + data.message);
+                    window.location.href = "@Url.Action("Print", "Home")"
+                });
+
+        }
+
+        function deleteRow(row) {
+            //var $tableB = $('#product_list tbody');
+            row.remove();
+        }
+    </script>
+
+
+}
+
+@section styles{
+    <link href="~/Content/bootstrap.css" rel="stylesheet" />
+
+    <link href="~/Content/bootstrap.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery-confirm/3.3.2/jquery-confirm.min.css">
+    <link rel="stylesheet" href="//cdn.datatables.net/1.10.19/css/jquery.dataTables.min.css">
+}
